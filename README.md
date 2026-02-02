@@ -2,7 +2,7 @@
 
 An interactive, browser-based tool for visualizing neural network architectures. Create publication-ready diagrams for MLPs, ResNets, and Neural ODEs.
 
-![Preview](preview.png)
+![Preview](example.png)
 
 ## Features
 
