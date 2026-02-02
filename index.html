@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neural Network Architecture Visualizer</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+        }
+
+        .control-panel {
+            width: 300px;
+            min-width: 300px;
+            background: #ffffff;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 100vh;
+            border-right: 1px solid #ddd;
+            font-size: 0.9em;
+        }
+
+        body.dark-mode .control-panel {
+            background: rgba(30, 30, 50, 0.95);
+            border-right: 1px solid rgba(100, 100, 150, 0.3);
+        }
+
+        .panel-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #1f77b4;
+            text-align: center;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #1f77b433;
+        }
+
+        body.dark-mode .panel-title {
+            color: #7eb8ff;
+            border-bottom: 2px solid rgba(126, 184, 255, 0.3);
+        }
+
+        .section {
+            margin-bottom: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid #e9ecef;
+        }
+
+        body.dark-mode .section {
+            background: rgba(50, 50, 80, 0.4);
+            border: none;
+        }
+
+        .section-title {
+            font-size: 0.8em;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        body.dark-mode .section-title {
+            color: #9db8d4;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .control-row label {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        body.dark-mode .control-row label {
+            color: #b0b0b0;
+        }
+
+        input[type="number"], input[type="text"], select {
+            background: #fff;
+            border: 1px solid #ced4da;
+            color: #333;
+            padding: 5px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            width: 90px;
+        }
+
+        body.dark-mode input[type="number"], 
+        body.dark-mode input[type="text"], 
+        body.dark-mode select {
+            background: rgba(20, 20, 40, 0.8);
+            border: 1px solid rgba(100, 100, 150, 0.4);
+            color: #e0e0e0;
+        }
+
+        input[type="number"]:focus, input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #1f77b4;
+        }
+
+        body.dark-mode input[type="number"]:focus, 
+        body.dark-mode input[type="text"]:focus, 
+        body.dark-mode select:focus {
+            border-color: #7eb8ff;
+        }
+
+        select {
+            width: 110px;
+            cursor: pointer;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .checkbox-row input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+            accent-color: #1f77b4;
+        }
+
+        body.dark-mode .checkbox-row input[type="checkbox"] {
+            accent-color: #7eb8ff;
+        }
+
+        .checkbox-row label {
+            font-size: 0.8em;
+            color: #666;
+            cursor: pointer;
+        }
+
+        body.dark-mode .checkbox-row label {
+            color: #b0b0b0;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.8em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 6px;
+        }
+
+        .btn-primary {
+            background: #1f77b4;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1a6399;
+        }
+
+        body.dark-mode .btn-primary {
+            background: linear-gradient(135deg, #4a90d9 0%, #357abd 100%);
+        }
+
+        .btn-secondary {
+            background: #7f7f7f;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #6a6a6a;
+        }
+
+        body.dark-mode .btn-secondary {
+            background: rgba(80, 80, 120, 0.6);
+            color: #c0c0c0;
+        }
+
+        .btn-accent {
+            background: #ff7f0e;
+            color: white;
+        }
+
+        .btn-accent:hover {
+            background: #e06d00;
+        }
+
+        .layer-config {
+            background: #fff;
+            border-radius: 5px;
+            padding: 8px;
+            margin-top: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        body.dark-mode .layer-config {
+            background: rgba(30, 30, 50, 0.5);
+            border: none;
+        }
+
+        .layer-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 5px;
+        }
+
+        .layer-item span {
+            font-size: 0.75em;
+            color: #666;
+            min-width: 60px;
+        }
+
+        body.dark-mode .layer-item span {
+            color: #9db8d4;
+        }
+
+        .layer-item input {
+            flex: 1;
+            width: auto;
+        }
+
+        .layer-item button {
+            background: #d62728;
+            border: none;
+            color: white;
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+        }
+
+        .layer-item button:hover {
+            background: #b52122;
+        }
+
+        .canvas-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        body.dark-mode .canvas-container {
+            background: #1a1a2e;
+        }
+
+        #network-svg {
+            width: 100%;
+            height: 100vh;
+            cursor: grab;
+        }
+
+        #network-svg:active {
+            cursor: grabbing;
+        }
+
+        .top-toolbar {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 100;
+        }
+
+        body.dark-mode .top-toolbar {
+            background: rgba(30, 30, 50, 0.95);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-label {
+            font-size: 0.75em;
+            color: #666;
+            white-space: nowrap;
+        }
+
+        body.dark-mode .toolbar-label {
+            color: #aaa;
+        }
+
+        .toolbar-slider {
+            width: 80px;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #ddd;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        body.dark-mode .toolbar-slider {
+            background: #444;
+        }
+
+        .toolbar-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #1f77b4;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        body.dark-mode .toolbar-slider::-webkit-slider-thumb {
+            background: #7eb8ff;
+        }
+
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1000;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #ddd;
+            color: #333;
+            font-size: 1.1em;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        body.dark-mode .zoom-btn {
+            background: rgba(30, 30, 50, 0.9);
+            border: 1px solid rgba(100, 100, 150, 0.4);
+            color: #e0e0e0;
+        }
+
+        .zoom-btn:hover {
+            background: #f0f0f0;
+            border-color: #1f77b4;
+        }
+
+        body.dark-mode .zoom-btn:hover {
+            background: rgba(50, 50, 80, 0.9);
+            border-color: #7eb8ff;
+        }
+
+        .neuron {
+            stroke-width: 2;
+            transition: all 0.3s;
+        }
+
+        .neuron:hover {
+            stroke-width: 3;
+            filter: brightness(1.1);
+        }
+
+        .connection {
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        .residual-connection {
+            fill: none;
+            stroke-linecap: round;
+        }
+
+        .layer-label {
+            font-family: 'Segoe UI', sans-serif;
+            text-anchor: middle;
+        }
+
+        .info-text {
+            font-size: 0.7em;
+            color: #888;
+            text-align: center;
+            margin-top: 8px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+        }
+
+        .btn-grid .btn {
+            margin-bottom: 0;
+        }
+
+        .activation-path {
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <h1 class="panel-title">🧠 NN Visualizer</h1>
+
+        <div class="section">
+            <div class="section-title">Network Type</div>
+            <div class="control-row">
+                <label>Architecture:</label>
+                <select id="network-type">
+                    <option value="mlp">MLP (Feedforward)</option>
+                    <option value="resnet">ResNet (Residual)</option>
+                    <option value="neural-ode">Neural ODE</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section" id="mlp-config">
+            <div class="section-title">Layer Configuration</div>
+            <div class="layer-config" id="layer-list"></div>
+            <button class="btn btn-secondary" onclick="addLayer()" style="margin-top: 8px;">+ Add Hidden Layer</button>
+        </div>
+
+        <div class="section" id="resnet-config" style="display: none;">
+            <div class="section-title">ResNet Configuration</div>
+            <div class="control-row">
+                <label>Input Neurons:</label>
+                <input type="number" id="resnet-input" value="0" min="0" max="20">
+            </div>
+            <div class="control-row">
+                <label>State Neurons:</label>
+                <input type="number" id="resnet-state" value="6" min="1" max="20">
+            </div>
+            <div class="control-row">
+                <label>Output Neurons:</label>
+                <input type="number" id="resnet-output" value="0" min="0" max="20">
+            </div>
+            <div class="control-row">
+                <label>Residual Blocks:</label>
+                <input type="number" id="resnet-blocks" value="3" min="1" max="8">
+            </div>
+            <div class="control-row">
+                <label>Hidden per Block:</label>
+                <input type="number" id="resnet-hidden" value="8" min="1" max="20">
+            </div>
+        </div>
+
+        <div class="section" id="ode-config" style="display: none;">
+            <div class="section-title">Neural ODE Configuration</div>
+            <div class="control-row">
+                <label>State Neurons:</label>
+                <input type="number" id="ode-state" value="6" min="1" max="20">
+            </div>
+            <div class="control-row">
+                <label>Time Steps:</label>
+                <input type="number" id="ode-depth" value="20" min="5" max="50">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Display Options</div>
+            <div class="control-row">
+                <label>Background:</label>
+                <select id="background-mode">
+                    <option value="light">Light (White)</option>
+                    <option value="dark">Dark</option>
+                </select>
+            </div>
+            <div class="checkbox-row">
+                <input type="checkbox" id="show-text">
+                <label for="show-text">Show Labels</label>
+            </div>
+            <div class="checkbox-row">
+                <input type="checkbox" id="show-activations" checked>
+                <label for="show-activations">Show Activation Plots</label>
+            </div>
+            <div class="checkbox-row">
+                <input type="checkbox" id="show-residual" checked>
+                <label for="show-residual">Show Skip Connections</label>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Activation Functions</div>
+            <div class="control-row">
+                <label>Hidden:</label>
+                <select id="hidden-activation">
+                    <option value="sigmoid">Sigmoid</option>
+                    <option value="tanh">Tanh</option>
+                    <option value="relu" selected>ReLU</option>
+                    <option value="leaky-relu">Leaky ReLU</option>
+                    <option value="elu">ELU</option>
+                    <option value="swish">Swish</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Output:</label>
+                <select id="output-activation">
+                    <option value="none">None (Linear)</option>
+                    <option value="sigmoid">Sigmoid</option>
+                    <option value="softmax">Softmax</option>
+                    <option value="tanh">Tanh</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Weight Visualization</div>
+            <div class="control-row">
+                <label>Mode:</label>
+                <select id="param-mode">
+                    <option value="uniform">Uniform</option>
+                    <option value="random" selected>Random Sampling</option>
+                </select>
+            </div>
+            <div class="checkbox-row">
+                <input type="checkbox" id="autonomous-params">
+                <label for="autonomous-params">Autonomous (same pattern per block)</label>
+            </div>
+            <button class="btn btn-accent" onclick="sampleParameters()">🎲 Sample Parameters</button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Visual Style</div>
+            <div class="control-row">
+                <label>State Color:</label>
+                <select id="state-color">
+                    <option value="10">Black</option>
+                    <option value="0" selected>Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2">Green</option>
+                    <option value="3">Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7">Gray</option>
+                    <option value="8">Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Hidden Color:</label>
+                <select id="hidden-color">
+                    <option value="10">Black</option>
+                    <option value="0">Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2">Green</option>
+                    <option value="3">Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7">Gray</option>
+                    <option value="8" selected>Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Input Color:</label>
+                <select id="input-color">
+                    <option value="10">Black</option>
+                    <option value="0">Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2" selected>Green</option>
+                    <option value="3">Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7">Gray</option>
+                    <option value="8">Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Output Color:</label>
+                <select id="output-color">
+                    <option value="10">Black</option>
+                    <option value="0">Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2">Green</option>
+                    <option value="3" selected>Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7">Gray</option>
+                    <option value="8">Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Connection Color:</label>
+                <select id="connection-color">
+                    <option value="10">Black</option>
+                    <option value="0">Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2">Green</option>
+                    <option value="3">Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7" selected>Gray</option>
+                    <option value="8">Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Activation Color:</label>
+                <select id="activation-color">
+                    <option value="10" selected>Black</option>
+                    <option value="0">Blue</option>
+                    <option value="1">Orange</option>
+                    <option value="2">Green</option>
+                    <option value="3">Red</option>
+                    <option value="4">Purple</option>
+                    <option value="5">Brown</option>
+                    <option value="6">Pink</option>
+                    <option value="7">Gray</option>
+                    <option value="8">Olive</option>
+                    <option value="9">Cyan</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>State Shape:</label>
+                <select id="state-shape">
+                    <option value="circle" selected>Circle</option>
+                    <option value="square">Square</option>
+                    <option value="diamond">Diamond</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Hidden Shape:</label>
+                <select id="hidden-shape">
+                    <option value="circle" selected>Circle</option>
+                    <option value="square">Square</option>
+                    <option value="diamond">Diamond</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+            </div>
+            <div class="control-row">
+                <label>Neuron Radius: <span id="radius-value">18</span></label>
+                <input type="range" id="neuron-radius" value="18" min="5" max="40" step="1" style="width: 100%;">
+            </div>
+            <div class="control-row">
+                <label>Network Length: <span id="length-factor-value">100%</span></label>
+                <input type="range" id="network-length-factor" value="1" min="0.3" max="2" step="0.05" style="width: 100%;">
+            </div>
+            <div class="control-row">
+                <label>Network Height: <span id="height-factor-value">100%</span></label>
+                <input type="range" id="network-height-factor" value="1" min="0.3" max="2" step="0.05" style="width: 100%;">
+            </div>
+            <div class="control-row">
+                <label>Base Line Width:</label>
+                <input type="number" id="connection-width" value="1.5" min="0.5" max="5" step="0.5">
+            </div>
+        </div>
+
+        <div class="section">
+            <button class="btn btn-primary" onclick="renderNetwork()">🔄 Update Network</button>
+            <button class="btn btn-secondary" onclick="resetView()">🔍 Reset View</button>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Export</div>
+            <div class="btn-grid">
+                <button class="btn btn-secondary" onclick="exportSVG()">📥 SVG</button>
+                <button class="btn btn-secondary" onclick="exportPNG()">📥 PNG</button>
+                <button class="btn btn-secondary" onclick="exportPDF()">📥 PDF</button>
+            </div>
+        </div>
+
+        <p class="info-text">Scroll to zoom • Drag to pan</p>
+    </div>
+
+    <div class="canvas-container">
+        <div class="top-toolbar">
+            <div class="toolbar-group">
+                <span class="toolbar-label">Spacing:</span>
+                <input type="range" id="layer-spacing" class="toolbar-slider" min="0.3" max="2" step="0.05" value="1">
+                <span class="toolbar-label" id="spacing-value">100%</span>
+            </div>
+            <div class="toolbar-group">
+                <span class="toolbar-label">Tilt:</span>
+                <input type="range" id="inclination" class="toolbar-slider" min="0" max="60" step="1" value="0">
+                <span class="toolbar-label" id="inclination-value">0°</span>
+            </div>
+            <div class="toolbar-group">
+                <input type="checkbox" id="mirror-view" style="width: 14px; height: 14px; cursor: pointer;">
+                <span class="toolbar-label">Mirror</span>
+            </div>
+            <div class="toolbar-group">
+                <span class="toolbar-label">Skip Curve:</span>
+                <input type="range" id="skip-curvature" class="toolbar-slider" min="0" max="300" step="5" value="30">
+                <span class="toolbar-label" id="curvature-value">30%</span>
+            </div>
+            <div class="toolbar-group">
+                <span class="toolbar-label">Skip Width:</span>
+                <input type="range" id="skip-width" class="toolbar-slider" min="0.5" max="5" step="0.25" value="2">
+                <span class="toolbar-label" id="skip-width-value">2</span>
+            </div>
+            <div class="toolbar-group">
+                <span class="toolbar-label">Skip Opacity:</span>
+                <input type="range" id="skip-opacity" class="toolbar-slider" min="0.1" max="1" step="0.05" value="1">
+                <span class="toolbar-label" id="skip-opacity-value">100%</span>
+            </div>
+        </div>
+
+        <svg id="network-svg"></svg>
+        <div class="tooltip" id="tooltip"></div>
+        <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+            <button class="zoom-btn" onclick="resetView()">⌂</button>
+        </div>
+    </div>
+
+    <script>
+        // Matplotlib default color palette + black
+        const COLORS = [
+            "#1f77b4", // Blue
+            "#ff7f0e", // Orange
+            "#2ca02c", // Green
+            "#d62728", // Red
+            "#9467bd", // Purple
+            "#8c564b", // Brown
+            "#e377c2", // Pink
+            "#7f7f7f", // Gray
+            "#bcbd22", // Olive
+            "#17becf", // Cyan
+            "#000000"  // Black
+        ];
+
+        let networkConfig = {
+            type: 'mlp',
+            layers: [4, 8, 8, 3],
+            weights: {},
+            inputWeights: {},
+            stateValues: {},
+            hiddenValues: {}
+        };
+
+        let svg, g, zoom;
+        let width, height;
+
+        // Activation functions
+        function applyActivation(x, type) {
+            switch(type) {
+                case 'sigmoid': return 1 / (1 + Math.exp(-x));
+                case 'tanh': return Math.tanh(x);
+                case 'relu': return Math.max(0, x);
+                case 'leaky-relu': return x > 0 ? x : x * 0.01;
+                case 'elu': return x > 0 ? x : (Math.exp(x) - 1);
+                case 'swish': return x / (1 + Math.exp(-x));
+                default: return Math.max(0, x);
+            }
+        }
+
+        // Activation function paths for visualization
+        function getActivationPath(type, size) {
+            const s = size * 0.75; // Stay within neuron bounds
+            const points = [];
+            const steps = 40; // More steps for smoother curve
+            
+            for (let i = 0; i <= steps; i++) {
+                const x = (i / steps) * 2 - 1;
+                let y;
+                
+                switch(type) {
+                    case 'sigmoid':
+                        y = 1 / (1 + Math.exp(-x * 4)) * 2 - 1;
+                        break;
+                    case 'tanh':
+                        y = Math.tanh(x * 2);
+                        break;
+                    case 'relu':
+                        y = Math.max(0, x);
+                        break;
+                    case 'leaky-relu':
+                        y = x > 0 ? x : x * 0.1;
+                        break;
+                    case 'elu':
+                        y = x > 0 ? x : (Math.exp(x) - 1) * 0.5;
+                        break;
+                    case 'swish':
+                        y = x / (1 + Math.exp(-x * 2));
+                        break;
+                    default:
+                        y = Math.max(0, x);
+                }
+                
+                points.push({ x: x * s, y: -y * s });
+            }
+            
+            return points;
+        }
+
+        function createActivationPathString(points) {
+            if (points.length === 0) return '';
+            let d = `M ${points[0].x} ${points[0].y}`;
+            for (let i = 1; i < points.length; i++) {
+                d += ` L ${points[i].x} ${points[i].y}`;
+            }
+            return d;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initSVG();
+            initLayerConfig();
+            bindEvents();
+            sampleParameters();
+            renderNetwork();
+        });
+
+        function initSVG() {
+            const container = document.querySelector('.canvas-container');
+            width = container.clientWidth;
+            height = container.clientHeight;
+
+            svg = d3.select('#network-svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            g = svg.append('g').attr('class', 'main-group');
+
+            zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                });
+
+            svg.call(zoom);
+
+            window.addEventListener('resize', () => {
+                width = container.clientWidth;
+                height = container.clientHeight;
+                svg.attr('width', width).attr('height', height);
+                renderNetwork();
+            });
+        }
+
+        function initLayerConfig() {
+            updateLayerList();
+        }
+
+        function updateLayerList() {
+            const container = document.getElementById('layer-list');
+            container.innerHTML = '';
+
+            networkConfig.layers.forEach((neurons, i) => {
+                const isFirst = i === 0;
+                const isLast = i === networkConfig.layers.length - 1;
+                let label = isFirst ? 'Input' : (isLast ? 'Output' : `Hidden ${i}`);
+
+                const item = document.createElement('div');
+                item.className = 'layer-item';
+                item.innerHTML = `
+                    <span>${label}:</span>
+                    <input type="number" value="${neurons}" min="1" max="50" 
+                           onchange="updateLayerNeurons(${i}, this.value)">
+                    ${!isFirst && !isLast ? `<button onclick="removeLayer(${i})">×</button>` : ''}
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function updateLayerNeurons(index, value) {
+            networkConfig.layers[index] = parseInt(value) || 1;
+            sampleParameters();
+            renderNetwork();
+        }
+
+        function addLayer() {
+            const lastHiddenIndex = networkConfig.layers.length - 1;
+            networkConfig.layers.splice(lastHiddenIndex, 0, 6);
+            updateLayerList();
+            sampleParameters();
+            renderNetwork();
+        }
+
+        function removeLayer(index) {
+            if (networkConfig.layers.length > 2) {
+                networkConfig.layers.splice(index, 1);
+                updateLayerList();
+                sampleParameters();
+                renderNetwork();
+            }
+        }
+
+        function bindEvents() {
+            document.getElementById('network-type').addEventListener('change', (e) => {
+                networkConfig.type = e.target.value;
+                document.getElementById('mlp-config').style.display = e.target.value === 'mlp' ? 'block' : 'none';
+                document.getElementById('resnet-config').style.display = e.target.value === 'resnet' ? 'block' : 'none';
+                document.getElementById('ode-config').style.display = e.target.value === 'neural-ode' ? 'block' : 'none';
+                sampleParameters();
+                renderNetwork();
+            });
+
+            document.getElementById('background-mode').addEventListener('change', (e) => {
+                if (e.target.value === 'dark') {
+                    document.body.classList.add('dark-mode');
+                } else {
+                    document.body.classList.remove('dark-mode');
+                }
+                renderNetwork();
+            });
+
+            ['show-text', 'show-activations', 'show-residual'].forEach(id => {
+                document.getElementById(id).addEventListener('change', renderNetwork);
+            });
+
+            ['hidden-activation', 'output-activation'].forEach(id => {
+                document.getElementById(id).addEventListener('change', () => {
+                    sampleParameters();
+                    renderNetwork();
+                });
+            });
+
+            document.getElementById('neuron-radius').addEventListener('input', (e) => {
+                document.getElementById('radius-value').textContent = e.target.value;
+                renderNetwork();
+            });
+
+            document.getElementById('network-length-factor').addEventListener('input', (e) => {
+                document.getElementById('length-factor-value').textContent = Math.round(e.target.value * 100) + '%';
+                renderNetwork();
+            });
+
+            document.getElementById('network-height-factor').addEventListener('input', (e) => {
+                document.getElementById('height-factor-value').textContent = Math.round(e.target.value * 100) + '%';
+                renderNetwork();
+            });
+
+            ['connection-width', 'state-color', 'hidden-color', 'connection-color', 'input-color', 'output-color', 'activation-color', 'state-shape', 'hidden-shape'].forEach(id => {
+                document.getElementById(id).addEventListener('change', renderNetwork);
+            });
+
+            document.getElementById('param-mode').addEventListener('change', () => {
+                sampleParameters();
+                renderNetwork();
+            });
+
+            document.getElementById('autonomous-params').addEventListener('change', () => {
+                sampleParameters();
+                renderNetwork();
+            });
+
+            document.getElementById('layer-spacing').addEventListener('input', (e) => {
+                document.getElementById('spacing-value').textContent = Math.round(e.target.value * 100) + '%';
+                renderNetwork();
+            });
+
+            document.getElementById('inclination').addEventListener('input', (e) => {
+                document.getElementById('inclination-value').textContent = e.target.value + '°';
+                renderNetwork();
+            });
+
+            document.getElementById('mirror-view').addEventListener('change', renderNetwork);
+
+            document.getElementById('skip-curvature').addEventListener('input', (e) => {
+                document.getElementById('curvature-value').textContent = e.target.value + '%';
+                renderNetwork();
+            });
+
+            document.getElementById('skip-width').addEventListener('input', (e) => {
+                document.getElementById('skip-width-value').textContent = e.target.value;
+                renderNetwork();
+            });
+
+            document.getElementById('skip-opacity').addEventListener('input', (e) => {
+                document.getElementById('skip-opacity-value').textContent = Math.round(e.target.value * 100) + '%';
+                renderNetwork();
+            });
+
+            // ResNet/ODE config changes
+            ['resnet-input', 'resnet-state', 'resnet-output', 'resnet-blocks', 'resnet-hidden',
+             'ode-state', 'ode-depth'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', () => {
+                        sampleParameters();
+                        renderNetwork();
+                    });
+                }
+            });
+        }
+
+        function sampleParameters() {
+            const type = networkConfig.type;
+            const hiddenActivation = document.getElementById('hidden-activation').value;
+            
+            networkConfig.weights = {};
+            networkConfig.inputWeights = {};
+            networkConfig.stateValues = {};
+            networkConfig.hiddenValues = {};
+
+            if (type === 'mlp') {
+                // MLP: just sample weights for visualization
+                const layers = networkConfig.layers;
+                for (let i = 0; i < layers.length - 1; i++) {
+                    networkConfig.weights[i] = [];
+                    for (let j = 0; j < layers[i]; j++) {
+                        networkConfig.weights[i][j] = [];
+                        for (let k = 0; k < layers[i + 1]; k++) {
+                            networkConfig.weights[i][j][k] = (Math.random() - 0.5) * 2;
+                        }
+                    }
+                }
+
+                // Compute activations through the network
+                // Start with random input
+                networkConfig.stateValues[0] = [];
+                for (let j = 0; j < layers[0]; j++) {
+                    networkConfig.stateValues[0][j] = Math.random();
+                }
+
+                for (let i = 1; i < layers.length; i++) {
+                    networkConfig.stateValues[i] = [];
+                    for (let k = 0; k < layers[i]; k++) {
+                        let sum = 0;
+                        for (let j = 0; j < layers[i-1]; j++) {
+                            sum += networkConfig.stateValues[i-1][j] * networkConfig.weights[i-1][j][k];
+                        }
+                        const isLast = i === layers.length - 1;
+                        if (isLast) {
+                            networkConfig.stateValues[i][k] = Math.abs(sum) / (1 + Math.abs(sum));
+                        } else {
+                            networkConfig.stateValues[i][k] = Math.abs(applyActivation(sum, hiddenActivation));
+                        }
+                    }
+                }
+
+            } else if (type === 'resnet') {
+                const input = parseInt(document.getElementById('resnet-input').value) || 0;
+                const state = parseInt(document.getElementById('resnet-state').value);
+                const output = parseInt(document.getElementById('resnet-output').value) || 0;
+                const blocks = parseInt(document.getElementById('resnet-blocks').value);
+                const hidden = parseInt(document.getElementById('resnet-hidden').value);
+                const autonomous = document.getElementById('autonomous-params').checked;
+
+                // Initialize state with random values
+                let currentState = [];
+                for (let j = 0; j < state; j++) {
+                    currentState[j] = Math.random() * 0.5 + 0.25;
+                }
+
+                // Store initial state
+                networkConfig.stateValues[0] = [...currentState];
+
+                // If autonomous, generate template weights once
+                let templateInputWeights = null;
+                let templateOutputWeights = null;
+                
+                if (autonomous) {
+                    templateInputWeights = [];
+                    for (let j = 0; j < state; j++) {
+                        templateInputWeights[j] = [];
+                        for (let k = 0; k < hidden; k++) {
+                            templateInputWeights[j][k] = (Math.random() - 0.5) * 2;
+                        }
+                    }
+                    templateOutputWeights = [];
+                    for (let j = 0; j < hidden; j++) {
+                        templateOutputWeights[j] = [];
+                        for (let k = 0; k < state; k++) {
+                            templateOutputWeights[j][k] = (Math.random() - 0.5) * 2;
+                        }
+                    }
+                }
+
+                // For each residual block
+                for (let b = 0; b < blocks; b++) {
+                    // Input weights: state -> hidden (a_i weights)
+                    if (autonomous) {
+                        networkConfig.inputWeights[b] = templateInputWeights;
+                    } else {
+                        networkConfig.inputWeights[b] = [];
+                        for (let j = 0; j < state; j++) {
+                            networkConfig.inputWeights[b][j] = [];
+                            for (let k = 0; k < hidden; k++) {
+                                networkConfig.inputWeights[b][j][k] = (Math.random() - 0.5) * 2;
+                            }
+                        }
+                    }
+
+                    // Output weights: hidden -> state (w_i weights)
+                    if (autonomous) {
+                        networkConfig.weights[b] = templateOutputWeights;
+                    } else {
+                        networkConfig.weights[b] = [];
+                        for (let j = 0; j < hidden; j++) {
+                            networkConfig.weights[b][j] = [];
+                            for (let k = 0; k < state; k++) {
+                                networkConfig.weights[b][j][k] = (Math.random() - 0.5) * 2;
+                            }
+                        }
+                    }
+
+                    // Compute hidden layer: h = σ(a_i * x)
+                    networkConfig.hiddenValues[b] = [];
+                    for (let k = 0; k < hidden; k++) {
+                        let sum = 0;
+                        for (let j = 0; j < state; j++) {
+                            sum += currentState[j] * networkConfig.inputWeights[b][j][k];
+                        }
+                        networkConfig.hiddenValues[b][k] = applyActivation(sum, hiddenActivation);
+                    }
+
+                    // Compute next state: x_{n+1} = x_n + Σ w_i * σ(a_i * x)
+                    const nextState = [];
+                    for (let k = 0; k < state; k++) {
+                        let delta = 0;
+                        for (let j = 0; j < hidden; j++) {
+                            delta += networkConfig.weights[b][j][k] * networkConfig.hiddenValues[b][j];
+                        }
+                        nextState[k] = Math.max(0, Math.min(1, currentState[k] + delta * 0.3));
+                    }
+                    
+                    currentState = nextState;
+                    networkConfig.stateValues[b + 1] = [...currentState];
+                }
+
+            } else if (type === 'neural-ode') {
+                const state = parseInt(document.getElementById('ode-state').value);
+                const depth = parseInt(document.getElementById('ode-depth').value);
+
+                // Initialize state
+                let currentState = [];
+                for (let j = 0; j < state; j++) {
+                    currentState[j] = Math.random() * 0.5 + 0.25;
+                }
+
+                // Sample velocity field parameters (constant for simplicity)
+                const velocityWeights = [];
+                for (let j = 0; j < state; j++) {
+                    velocityWeights[j] = [];
+                    for (let k = 0; k < state; k++) {
+                        velocityWeights[j][k] = (Math.random() - 0.5) * 0.3;
+                    }
+                }
+
+                // Euler integration through time
+                for (let t = 0; t <= depth; t++) {
+                    networkConfig.stateValues[t] = [...currentState];
+                    
+                    if (t < depth) {
+                        const dt = 1 / depth;
+                        const nextState = [];
+                        for (let k = 0; k < state; k++) {
+                            let velocity = 0;
+                            for (let j = 0; j < state; j++) {
+                                velocity += velocityWeights[j][k] * Math.tanh(currentState[j] * 2);
+                            }
+                            nextState[k] = Math.max(0, Math.min(1, currentState[k] + velocity * dt * 3));
+                        }
+                        currentState = nextState;
+                    }
+                }
+            }
+
+            renderNetwork();
+        }
+
+        function getLayerConfig() {
+            const type = networkConfig.type;
+
+            if (type === 'mlp') {
+                return networkConfig.layers;
+            } else if (type === 'resnet') {
+                const input = parseInt(document.getElementById('resnet-input').value) || 0;
+                const state = parseInt(document.getElementById('resnet-state').value);
+                const output = parseInt(document.getElementById('resnet-output').value) || 0;
+                const blocks = parseInt(document.getElementById('resnet-blocks').value);
+                const hidden = parseInt(document.getElementById('resnet-hidden').value);
+
+                const layers = [];
+                if (input > 0) layers.push({ type: 'input', count: input });
+                
+                for (let i = 0; i < blocks; i++) {
+                    layers.push({ type: 'state', count: state, blockIndex: i });
+                    layers.push({ type: 'hidden', count: hidden, blockIndex: i });
+                }
+                layers.push({ type: 'state', count: state, blockIndex: blocks });
+                
+                if (output > 0) layers.push({ type: 'output', count: output });
+                
+                return layers;
+            } else if (type === 'neural-ode') {
+                const state = parseInt(document.getElementById('ode-state').value);
+                const depth = parseInt(document.getElementById('ode-depth').value);
+
+                const layers = [];
+                for (let i = 0; i <= depth; i++) {
+                    layers.push({ type: 'state', count: state, timeIndex: i, t: i / depth });
+                }
+                return layers;
+            }
+
+            return [{ type: 'input', count: 4 }, { type: 'hidden', count: 6 }, { type: 'output', count: 3 }];
+        }
+
+        // 3D transformation - tilts the plane like a rhombus (shear transform) + mirror
+        function apply3DTransform(x, y, inclination, mirror) {
+            const tiltRad = (inclination * Math.PI) / 180;
+            
+            const centerY = height / 2;
+            const relativeY = y - centerY;
+            
+            // Compress Y and shear X
+            const compressedY = relativeY * Math.cos(tiltRad);
+            // Mirror flips the shear direction
+            const shearDirection = mirror ? -1 : 1;
+            const shearX = relativeY * Math.sin(tiltRad) * 0.5 * shearDirection;
+            
+            return {
+                x: x + shearX,
+                y: centerY + compressedY,
+                scale: 1
+            };
+        }
+
+        function renderNetwork() {
+            g.selectAll('*').remove();
+
+            const type = networkConfig.type;
+            const layers = getLayerConfig();
+            const showText = document.getElementById('show-text').checked;
+            const showActivations = document.getElementById('show-activations').checked;
+            const showResidual = document.getElementById('show-residual').checked;
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            const neuronRadius = parseInt(document.getElementById('neuron-radius').value);
+            const baseConnectionWidth = parseFloat(document.getElementById('connection-width').value);
+            const hiddenActivation = document.getElementById('hidden-activation').value;
+            const paramMode = document.getElementById('param-mode').value;
+            const layerSpacingFactor = parseFloat(document.getElementById('layer-spacing').value);
+            const inclination = parseFloat(document.getElementById('inclination').value);
+            const mirror = document.getElementById('mirror-view').checked;
+            const skipCurvature = parseFloat(document.getElementById('skip-curvature').value);
+            const networkLengthFactor = parseFloat(document.getElementById('network-length-factor').value);
+            const networkHeightFactor = parseFloat(document.getElementById('network-height-factor').value);
+            
+            const stateColorIdx = parseInt(document.getElementById('state-color').value);
+            const hiddenColorIdx = parseInt(document.getElementById('hidden-color').value);
+            const connectionColorIdx = parseInt(document.getElementById('connection-color').value);
+            const inputColorIdx = parseInt(document.getElementById('input-color').value);
+            const outputColorIdx = parseInt(document.getElementById('output-color').value);
+            const activationColorIdx = parseInt(document.getElementById('activation-color').value);
+            const stateShape = document.getElementById('state-shape').value;
+            const hiddenShape = document.getElementById('hidden-shape').value;
+
+            const textColor = isDarkMode ? '#9db8d4' : '#495057';
+            const activationLineColor = COLORS[activationColorIdx];
+            const connectionColor = COLORS[connectionColorIdx];
+            const stateColor = COLORS[stateColorIdx];
+            const hiddenColor = COLORS[hiddenColorIdx];
+            const inputColor = COLORS[inputColorIdx];
+            const outputColor = COLORS[outputColorIdx];
+
+            const padding = { top: 100, bottom: 100, left: 150, right: 150 };
+            
+            // Get layer counts for positioning
+            const layerCounts = type === 'mlp' ? layers : layers.map(l => l.count);
+            const numLayers = layerCounts.length;
+            
+            // Network length factor controls horizontal spread (independent of neuron size)
+            const baseLayerSpacing = (width - padding.left - padding.right) / Math.max(1, numLayers - 1);
+            const layerSpacing = baseLayerSpacing * layerSpacingFactor * networkLengthFactor;
+            const totalWidth = layerSpacing * Math.max(0, numLayers - 1);
+            const startX = (width - totalWidth) / 2;
+
+            // Fixed neuron spacing (independent of radius) - use height factor for vertical spread
+            const baseNeuronSpacing = 50 * networkHeightFactor; // Vertical spacing between neuron centers
+
+            // Helper function to draw shapes
+            function drawShape(group, shape, radius, fill, stroke, strokeWidth) {
+                if (shape === 'circle') {
+                    return group.append('circle')
+                        .attr('r', radius)
+                        .attr('fill', fill)
+                        .attr('stroke', stroke)
+                        .attr('stroke-width', strokeWidth);
+                } else if (shape === 'square') {
+                    const size = radius * 1.6;
+                    return group.append('rect')
+                        .attr('x', -size/2)
+                        .attr('y', -size/2)
+                        .attr('width', size)
+                        .attr('height', size)
+                        .attr('fill', fill)
+                        .attr('stroke', stroke)
+                        .attr('stroke-width', strokeWidth);
+                } else if (shape === 'diamond') {
+                    const size = radius * 1.4;
+                    return group.append('polygon')
+                        .attr('points', `0,${-size} ${size},0 0,${size} ${-size},0`)
+                        .attr('fill', fill)
+                        .attr('stroke', stroke)
+                        .attr('stroke-width', strokeWidth);
+                } else if (shape === 'triangle') {
+                    const size = radius * 1.5;
+                    const h = size * Math.sqrt(3) / 2;
+                    return group.append('polygon')
+                        .attr('points', `0,${-h*0.7} ${size},${h*0.5} ${-size},${h*0.5}`)
+                        .attr('fill', fill)
+                        .attr('stroke', stroke)
+                        .attr('stroke-width', strokeWidth);
+                }
+            }
+
+            // Calculate base positions
+            const basePositions = [];
+            layerCounts.forEach((count, layerIndex) => {
+                const c = typeof count === 'object' ? count : count;
+                const layerPositions = [];
+                // Use fixed spacing - neuron positions don't change with radius
+                const neuronSpacing = baseNeuronSpacing;
+                const startY = height / 2 - (c - 1) * neuronSpacing / 2;
+
+                for (let i = 0; i < c; i++) {
+                    const baseX = startX + layerIndex * layerSpacing;
+                    const baseY = startY + i * neuronSpacing;
+                    
+                    const transformed = apply3DTransform(baseX, baseY, inclination, mirror);
+                    
+                    layerPositions.push({
+                        x: transformed.x,
+                        y: transformed.y,
+                        scale: transformed.scale,
+                        layer: layerIndex,
+                        index: i
+                    });
+                }
+                basePositions.push(layerPositions);
+            });
+
+            // Draw connections
+            const connectionsGroup = g.append('g').attr('class', 'connections');
+
+            if (type === 'mlp') {
+                // MLP connections
+                for (let i = 0; i < numLayers - 1; i++) {
+                    const fromLayer = basePositions[i];
+                    const toLayer = basePositions[i + 1];
+
+                    fromLayer.forEach((from, fromIdx) => {
+                        toLayer.forEach((to, toIdx) => {
+                            let opacity = 0.4;
+                            let strokeWidth = baseConnectionWidth;
+
+                            if (paramMode === 'random' && networkConfig.weights[i] && 
+                                networkConfig.weights[i][fromIdx]) {
+                                const weight = Math.abs(networkConfig.weights[i][fromIdx][toIdx] || 0);
+                                opacity = 0.15 + Math.min(weight, 1) * 0.6;
+                                strokeWidth = baseConnectionWidth * (0.4 + Math.min(weight, 1) * 1.5);
+                            }
+
+                            connectionsGroup.append('line')
+                                .attr('class', 'connection')
+                                .attr('x1', from.x)
+                                .attr('y1', from.y)
+                                .attr('x2', to.x)
+                                .attr('y2', to.y)
+                                .attr('stroke', connectionColor)
+                                .attr('stroke-width', strokeWidth)
+                                .attr('opacity', opacity);
+                        });
+                    });
+                }
+            } else if (type === 'resnet') {
+                // ResNet connections: state -> hidden -> next state
+                const input = parseInt(document.getElementById('resnet-input').value) || 0;
+                const offset = input > 0 ? 1 : 0;
+
+                for (let i = 0; i < numLayers - 1; i++) {
+                    const fromLayerInfo = layers[i];
+                    const toLayerInfo = layers[i + 1];
+                    
+                    // Skip input/output connections for simplicity
+                    if (fromLayerInfo.type === 'input' || toLayerInfo.type === 'output') continue;
+                    if (fromLayerInfo.type === 'state' && toLayerInfo.type === 'state') continue;
+
+                    const fromLayer = basePositions[i];
+                    const toLayer = basePositions[i + 1];
+                    const blockIdx = fromLayerInfo.blockIndex;
+
+                    fromLayer.forEach((from, fromIdx) => {
+                        toLayer.forEach((to, toIdx) => {
+                            let opacity = 0.3;
+                            let strokeWidth = baseConnectionWidth;
+
+                            if (fromLayerInfo.type === 'state' && toLayerInfo.type === 'hidden') {
+                                // Input weights a_i
+                                if (networkConfig.inputWeights[blockIdx] && 
+                                    networkConfig.inputWeights[blockIdx][fromIdx]) {
+                                    const weight = Math.abs(networkConfig.inputWeights[blockIdx][fromIdx][toIdx] || 0);
+                                    opacity = 0.15 + Math.min(weight, 1) * 0.5;
+                                    strokeWidth = baseConnectionWidth * (0.4 + Math.min(weight, 1) * 1.2);
+                                }
+                            } else if (fromLayerInfo.type === 'hidden' && toLayerInfo.type === 'state') {
+                                // Output weights w_i (hidden[fromIdx] -> state[toIdx])
+                                if (networkConfig.weights[blockIdx] && 
+                                    networkConfig.weights[blockIdx][fromIdx]) {
+                                    const weight = Math.abs(networkConfig.weights[blockIdx][fromIdx][toIdx] || 0);
+                                    opacity = 0.15 + Math.min(weight, 1) * 0.5;
+                                    strokeWidth = baseConnectionWidth * (0.4 + Math.min(weight, 1) * 1.2);
+                                }
+                            }
+
+                            connectionsGroup.append('line')
+                                .attr('class', 'connection')
+                                .attr('x1', from.x)
+                                .attr('y1', from.y)
+                                .attr('x2', to.x)
+                                .attr('y2', to.y)
+                                .attr('stroke', connectionColor)
+                                .attr('stroke-width', strokeWidth)
+                                .attr('opacity', opacity);
+                        });
+                    });
+                }
+            }
+            // Neural ODE: draw as continuous band with many semi-transparent edges only
+            if (type === 'neural-ode') {
+                const odeGroup = g.append('g').attr('class', 'neural-ode-continuous');
+                const numStates = layers[0].count;
+                const numTimeSteps = layers.length;
+                
+                // Draw many intermediate edges (much more than the time steps)
+                const edgeResolution = 50; // Number of intermediate edges per segment
+                
+                for (let neuronIdx = 0; neuronIdx < numStates; neuronIdx++) {
+                    // Get all positions for this neuron over time
+                    const positions = basePositions.map((lp, t) => ({
+                        x: lp[neuronIdx].x,
+                        y: lp[neuronIdx].y,
+                        value: networkConfig.stateValues[t] ? networkConfig.stateValues[t][neuronIdx] : 0.5
+                    }));
+                    
+                    // Draw continuous band outline
+                    const bandPath = d3.path();
+                    bandPath.moveTo(positions[0].x, positions[0].y - neuronRadius);
+                    
+                    // Top edge
+                    for (let i = 1; i < positions.length; i++) {
+                        bandPath.lineTo(positions[i].x, positions[i].y - neuronRadius);
+                    }
+                    
+                    // Right cap
+                    bandPath.lineTo(positions[positions.length - 1].x, positions[positions.length - 1].y + neuronRadius);
+                    
+                    // Bottom edge (reverse)
+                    for (let i = positions.length - 2; i >= 0; i--) {
+                        bandPath.lineTo(positions[i].x, positions[i].y + neuronRadius);
+                    }
+                    bandPath.closePath();
+                    
+                    // Fill the band with semi-transparent state color
+                    const fillColor = d3.color(stateColor);
+                    fillColor.opacity = 0.08;
+                    
+                    odeGroup.append('path')
+                        .attr('d', bandPath.toString())
+                        .attr('fill', fillColor.toString())
+                        .attr('stroke', 'none');
+                    
+                    // Draw many intermediate vertical edges (hidden layer connections) - ALL in state color
+                    for (let seg = 0; seg < positions.length - 1; seg++) {
+                        const startPos = positions[seg];
+                        const endPos = positions[seg + 1];
+                        
+                        for (let e = 0; e <= edgeResolution; e++) {
+                            const t = e / edgeResolution;
+                            const x = startPos.x + (endPos.x - startPos.x) * t;
+                            const y = startPos.y + (endPos.y - startPos.y) * t;
+                            const value = startPos.value + (endPos.value - startPos.value) * t;
+                            
+                            // Edge opacity based on value - more visible now
+                            const edgeOpacity = 0.15 + value * 0.35;
+                            
+                            odeGroup.append('line')
+                                .attr('x1', x)
+                                .attr('y1', y - neuronRadius)
+                                .attr('x2', x)
+                                .attr('y2', y + neuronRadius)
+                                .attr('stroke', stateColor) // All in state color
+                                .attr('stroke-width', 0.8)
+                                .attr('opacity', edgeOpacity);
+                        }
+                    }
+                    
+                    // Draw horizontal flow lines (top and bottom edges) - state color
+                    odeGroup.append('path')
+                        .attr('d', d3.line()(positions.map(p => [p.x, p.y - neuronRadius])))
+                        .attr('fill', 'none')
+                        .attr('stroke', stateColor)
+                        .attr('stroke-width', 1.5)
+                        .attr('opacity', 0.7);
+                    
+                    odeGroup.append('path')
+                        .attr('d', d3.line()(positions.map(p => [p.x, p.y + neuronRadius])))
+                        .attr('fill', 'none')
+                        .attr('stroke', stateColor)
+                        .attr('stroke-width', 1.5)
+                        .attr('opacity', 0.7);
+                }
+                
+                // Add start and end markers - ALL in state color
+                const startPositions = basePositions[0];
+                const endPositions = basePositions[basePositions.length - 1];
+                
+                startPositions.forEach((pos, idx) => {
+                    const value = networkConfig.stateValues[0] ? networkConfig.stateValues[0][idx] : 0.5;
+                    const alpha = 0.3 + value * 0.6;
+                    const fill = d3.color(stateColor);
+                    fill.opacity = alpha;
+                    
+                    odeGroup.append('circle')
+                        .attr('cx', pos.x)
+                        .attr('cy', pos.y)
+                        .attr('r', neuronRadius * 0.6)
+                        .attr('fill', fill.toString())
+                        .attr('stroke', stateColor)
+                        .attr('stroke-width', 1.5);
+                });
+                
+                endPositions.forEach((pos, idx) => {
+                    const timeIdx = layers.length - 1;
+                    const value = networkConfig.stateValues[timeIdx] ? networkConfig.stateValues[timeIdx][idx] : 0.5;
+                    const alpha = 0.3 + value * 0.6;
+                    const fill = d3.color(stateColor); // Same state color
+                    fill.opacity = alpha;
+                    
+                    odeGroup.append('circle')
+                        .attr('cx', pos.x)
+                        .attr('cy', pos.y)
+                        .attr('r', neuronRadius * 0.6)
+                        .attr('fill', fill.toString())
+                        .attr('stroke', stateColor) // Same state color
+                        .attr('stroke-width', 1.5);
+                });
+            }
+
+            // Draw neurons (skip for Neural ODE - already drawn)
+            // For ResNet: draw hidden neurons first, then skip connections, then state neurons
+            if (type !== 'neural-ode') {
+                const neuronsGroup = g.append('g').attr('class', 'neurons');
+                
+                // First pass: Draw HIDDEN neurons only (for ResNet) or all non-state (for others)
+                basePositions.forEach((layerPositions, layerIndex) => {
+                    let layerInfo;
+                    if (type === 'mlp') {
+                        const isFirst = layerIndex === 0;
+                        const isLast = layerIndex === numLayers - 1;
+                        layerInfo = {
+                            type: isFirst ? 'input' : (isLast ? 'output' : 'hidden'),
+                            count: layers[layerIndex]
+                        };
+                    } else {
+                        layerInfo = layers[layerIndex];
+                    }
+
+                    const isHidden = layerInfo.type === 'hidden';
+                    const isState = layerInfo.type === 'state';
+                    const isInput = layerInfo.type === 'input';
+                    const isOutput = layerInfo.type === 'output';
+
+                    // For ResNet, skip state neurons in first pass
+                    if (type === 'resnet' && isState) return;
+
+                    // Get color for this layer
+                    let layerColor;
+                    if (isInput) {
+                        layerColor = inputColor;
+                    } else if (isOutput) {
+                        layerColor = outputColor;
+                    } else if (isState) {
+                        layerColor = stateColor;
+                    } else {
+                        layerColor = hiddenColor;
+                    }
+
+                    layerPositions.forEach((pos, neuronIndex) => {
+                        const neuronGroup = neuronsGroup.append('g')
+                            .attr('transform', `translate(${pos.x}, ${pos.y})`);
+
+                        // Get value for this neuron
+                        let neuronValue = 0.5;
+                        
+                        if (type === 'mlp') {
+                            if (networkConfig.stateValues[layerIndex]) {
+                                neuronValue = networkConfig.stateValues[layerIndex][neuronIndex] || 0.5;
+                            }
+                        } else if (type === 'resnet') {
+                            if (isState) {
+                                const stateIdx = layerInfo.blockIndex;
+                                if (networkConfig.stateValues[stateIdx]) {
+                                    neuronValue = networkConfig.stateValues[stateIdx][neuronIndex] || 0.5;
+                                }
+                            } else if (isHidden) {
+                                const blockIdx = layerInfo.blockIndex;
+                                if (networkConfig.hiddenValues[blockIdx]) {
+                                    neuronValue = Math.abs(networkConfig.hiddenValues[blockIdx][neuronIndex]) || 0.5;
+                                    neuronValue = Math.min(1, neuronValue);
+                                }
+                            }
+                        }
+
+                        // Background for neurons
+                        const fillColor = isDarkMode ? 'rgba(30, 30, 50, 0.9)' : '#ffffff';
+
+                        if (isState) {
+                            // State neurons: solid fill with transparency based on magnitude
+                            const alpha = 0.05 + neuronValue * 0.9;
+                            const fillWithAlpha = d3.color(layerColor);
+                            fillWithAlpha.opacity = alpha;
+
+                            drawShape(neuronGroup, stateShape, neuronRadius, fillWithAlpha.toString(), layerColor, 2)
+                                .attr('class', 'neuron')
+                                .on('mouseover', function(event) {
+                                    showTooltip(event, `Value: ${neuronValue.toFixed(3)}`);
+                                })
+                                .on('mouseout', hideTooltip);
+                        } else if (isHidden) {
+                            // Hidden neurons: white fill with activation plot
+                            drawShape(neuronGroup, hiddenShape, neuronRadius, fillColor, layerColor, 2)
+                                .attr('class', 'neuron')
+                                .on('mouseover', function(event) {
+                                    showTooltip(event, `Layer ${layerIndex + 1}, Neuron ${neuronIndex + 1}`);
+                                })
+                                .on('mouseout', hideTooltip);
+
+                            // Draw activation function plot inside
+                            if (showActivations) {
+                                const pathPoints = getActivationPath(hiddenActivation, neuronRadius);
+                                const pathString = createActivationPathString(pathPoints);
+
+                                neuronGroup.append('path')
+                                    .attr('class', 'activation-path')
+                                    .attr('d', pathString)
+                                    .attr('fill', 'none')
+                                    .attr('stroke', activationLineColor)
+                                    .attr('stroke-width', 2.5)
+                                    .attr('opacity', 1);
+                            }
+                        } else {
+                            // Input/Output neurons - always circles
+                            const alpha = 0.2 + neuronValue * 0.5;
+                            const fillWithAlpha = d3.color(layerColor);
+                            fillWithAlpha.opacity = alpha;
+
+                            neuronGroup.append('circle')
+                                .attr('class', 'neuron')
+                                .attr('r', neuronRadius)
+                                .attr('fill', fillWithAlpha.toString())
+                                .attr('stroke', layerColor)
+                                .attr('stroke-width', 2)
+                                .on('mouseover', function(event) {
+                                    showTooltip(event, `Layer ${layerIndex + 1}, Neuron ${neuronIndex + 1}`);
+                                })
+                                .on('mouseout', hideTooltip);
+                        }
+                    });
+                });
+            }
+
+            // Draw skip connections for ResNet - BETWEEN neurons and hidden layers
+            // Must be drawn AFTER hidden neurons but BEFORE state neurons
+            // We'll draw them here and they'll appear above hidden but below state
+            if (type === 'resnet' && showResidual) {
+                const residualGroup = g.append('g').attr('class', 'residual-connections');
+                const blocks = parseInt(document.getElementById('resnet-blocks').value);
+                const input = parseInt(document.getElementById('resnet-input').value) || 0;
+                const offset = input > 0 ? 1 : 0;
+
+                const skipWidth = parseFloat(document.getElementById('skip-width').value);
+                const skipOpacity = parseFloat(document.getElementById('skip-opacity').value);
+                const skipColor = stateColor; // Same color as state nodes
+
+                for (let b = 0; b < blocks; b++) {
+                    const stateIndex = offset + b * 2;
+                    const nextStateIndex = stateIndex + 2;
+
+                    if (nextStateIndex < basePositions.length) {
+                        const fromLayer = basePositions[stateIndex];
+                        const toLayer = basePositions[nextStateIndex];
+
+                        fromLayer.forEach((from, idx) => {
+                            if (idx < toLayer.length) {
+                                const to = toLayer[idx];
+                                
+                                // Curved arc with adjustable curvature
+                                const midX = (from.x + to.x) / 2;
+                                const arcOffset = skipCurvature * 1.5; // Scale curvature (increased range)
+                                const controlY = Math.min(from.y, to.y) - arcOffset;
+                                
+                                const path = d3.path();
+                                path.moveTo(from.x, from.y - neuronRadius);
+                                path.quadraticCurveTo(
+                                    midX, controlY - neuronRadius,
+                                    to.x, to.y - neuronRadius
+                                );
+
+                                residualGroup.append('path')
+                                    .attr('class', 'residual-connection')
+                                    .attr('d', path.toString())
+                                    .attr('fill', 'none')
+                                    .attr('stroke', skipColor)
+                                    .attr('stroke-width', skipWidth)
+                                    .attr('stroke-dasharray', '5,3')
+                                    .attr('opacity', skipOpacity);
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Second pass for ResNet: Draw STATE neurons ON TOP of skip connections
+            if (type === 'resnet') {
+                const stateNeuronsGroup = g.append('g').attr('class', 'state-neurons');
+                
+                basePositions.forEach((layerPositions, layerIndex) => {
+                    const layerInfo = layers[layerIndex];
+                    if (layerInfo.type !== 'state') return;
+
+                    const layerColor = stateColor;
+
+                    layerPositions.forEach((pos, neuronIndex) => {
+                        const neuronGroup = stateNeuronsGroup.append('g')
+                            .attr('transform', `translate(${pos.x}, ${pos.y})`);
+
+                        let neuronValue = 0.5;
+                        const stateIdx = layerInfo.blockIndex;
+                        if (networkConfig.stateValues[stateIdx]) {
+                            neuronValue = networkConfig.stateValues[stateIdx][neuronIndex] || 0.5;
+                        }
+
+                        // State neurons: solid fill with transparency based on magnitude
+                        const alpha = 0.05 + neuronValue * 0.9;
+                        const fillWithAlpha = d3.color(layerColor);
+                        fillWithAlpha.opacity = alpha;
+
+                        drawShape(neuronGroup, stateShape, neuronRadius, fillWithAlpha.toString(), layerColor, 2)
+                            .attr('class', 'neuron')
+                            .on('mouseover', function(event) {
+                                showTooltip(event, `Value: ${neuronValue.toFixed(3)}`);
+                            })
+                            .on('mouseout', hideTooltip);
+                    });
+                });
+            }
+
+            // Draw layer labels
+            if (showText) {
+                const labelsGroup = g.append('g').attr('class', 'labels');
+
+                if (type === 'neural-ode') {
+                    // For Neural ODE, only show t=0 and t=1 labels
+                    const firstPos = basePositions[0][0];
+                    const lastPos = basePositions[basePositions.length - 1][0];
+                    const bottomFirst = basePositions[0][basePositions[0].length - 1];
+                    const bottomLast = basePositions[basePositions.length - 1][basePositions[basePositions.length - 1].length - 1];
+                    
+                    labelsGroup.append('text')
+                        .attr('class', 'layer-label')
+                        .attr('x', firstPos.x)
+                        .attr('y', bottomFirst.y + neuronRadius + 30)
+                        .attr('font-size', 11)
+                        .attr('fill', textColor)
+                        .attr('text-anchor', 'middle')
+                        .text('t=0');
+                    
+                    labelsGroup.append('text')
+                        .attr('class', 'layer-label')
+                        .attr('x', lastPos.x)
+                        .attr('y', bottomLast.y + neuronRadius + 30)
+                        .attr('font-size', 11)
+                        .attr('fill', textColor)
+                        .attr('text-anchor', 'middle')
+                        .text('t=1');
+
+                    labelsGroup.append('text')
+                        .attr('class', 'layer-label')
+                        .attr('x', width / 2)
+                        .attr('y', 60)
+                        .attr('font-size', 14)
+                        .attr('fill', isDarkMode ? '#7eb8ff' : '#1f77b4')
+                        .attr('text-anchor', 'middle')
+                        .text('Neural ODE: dx/dt = f(x, t, θ)');
+                } else {
+                    basePositions.forEach((layerPositions, layerIndex) => {
+                        if (layerPositions.length === 0) return;
+
+                        const pos = layerPositions[0];
+                        const bottomPos = layerPositions[layerPositions.length - 1];
+                        const x = pos.x;
+                        const y = bottomPos.y + neuronRadius + 30;
+
+                        let label = '';
+                        if (type === 'mlp') {
+                            if (layerIndex === 0) label = 'Input';
+                            else if (layerIndex === numLayers - 1) label = 'Output';
+                            else label = `Hidden ${layerIndex}`;
+                        } else if (type === 'resnet') {
+                            const layerInfo = layers[layerIndex];
+                            if (layerInfo.type === 'input') label = 'Input';
+                            else if (layerInfo.type === 'output') label = 'Output';
+                            else if (layerInfo.type === 'state') label = `x_${layerInfo.blockIndex}`;
+                            else label = `h_${layerInfo.blockIndex + 1}`;
+                        }
+
+                        labelsGroup.append('text')
+                            .attr('class', 'layer-label')
+                            .attr('x', x)
+                            .attr('y', y)
+                            .attr('font-size', 11)
+                            .attr('fill', textColor)
+                            .attr('text-anchor', 'middle')
+                            .text(label);
+                    });
+                }
+            }
+        }
+
+        function showTooltip(event, text) {
+            const tooltip = document.getElementById('tooltip');
+            tooltip.textContent = text;
+            tooltip.style.left = (event.pageX + 10) + 'px';
+            tooltip.style.top = (event.pageY - 10) + 'px';
+            tooltip.style.opacity = 1;
+        }
+
+        function hideTooltip() {
+            document.getElementById('tooltip').style.opacity = 0;
+        }
+
+        function zoomIn() {
+            svg.transition().duration(300).call(zoom.scaleBy, 1.3);
+        }
+
+        function zoomOut() {
+            svg.transition().duration(300).call(zoom.scaleBy, 0.7);
+        }
+
+        function resetView() {
+            svg.transition().duration(500).call(zoom.transform, d3.zoomIdentity);
+        }
+
+        function getBackgroundColor() {
+            return document.body.classList.contains('dark-mode') ? '#1a1a2e' : '#ffffff';
+        }
+
+        function exportSVG() {
+            const svgElement = document.getElementById('network-svg');
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(svgElement);
+
+            const bgColor = getBackgroundColor();
+            svgString = svgString.replace(
+                '<g class="main-group"',
+                `<rect width="100%" height="100%" fill="${bgColor}"/><g class="main-group"`
+            );
+
+            const blob = new Blob([svgString], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'neural_network.svg';
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function exportPNG() {
+            const svgElement = document.getElementById('network-svg');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scale = 3;
+
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+
+            ctx.fillStyle = getBackgroundColor();
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(svgElement);
+
+            const img = new Image();
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function() {
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+
+                const pngUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.href = pngUrl;
+                link.download = 'neural_network.png';
+                link.click();
+            };
+
+            img.src = url;
+        }
+
+        function exportPDF() {
+            const { jsPDF } = window.jspdf;
+            
+            const svgElement = document.getElementById('network-svg');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const scale = 4; // High quality scale
+
+            canvas.width = width * scale;
+            canvas.height = height * scale;
+
+            ctx.fillStyle = getBackgroundColor();
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const serializer = new XMLSerializer();
+            let svgString = serializer.serializeToString(svgElement);
+
+            const img = new Image();
+            const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function() {
+                ctx.scale(scale, scale);
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+
+                // Use PNG for quality (reasonable file size ~5-15MB)
+                const pngUrl = canvas.toDataURL('image/png');
+                
+                const orientation = width > height ? 'landscape' : 'portrait';
+                const pdf = new jsPDF({
+                    orientation: orientation,
+                    unit: 'px',
+                    format: [width, height]
+                });
+
+                pdf.addImage(pngUrl, 'PNG', 0, 0, width, height);
+                pdf.save('neural_network.pdf');
+            };
+
+            img.src = url;
+        }
+    </script>
+</body>
+</html>
