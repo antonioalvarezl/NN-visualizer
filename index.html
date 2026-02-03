@@ -452,7 +452,6 @@
                 <select id="network-type">
                     <option value="mlp">MLP (Feedforward)</option>
                     <option value="resnet">ResNet (Residual)</option>
-                    <option value="neural-ode">Neural ODE</option>
                 </select>
             </div>
         </div>
@@ -484,18 +483,6 @@
             <div class="control-row">
                 <label>Hidden per Block:</label>
                 <input type="number" id="resnet-hidden" value="8" min="1" max="20">
-            </div>
-        </div>
-
-        <div class="section" id="ode-config" style="display: none;">
-            <div class="section-title">Neural ODE Configuration</div>
-            <div class="control-row">
-                <label>State Neurons:</label>
-                <input type="number" id="ode-state" value="6" min="1" max="20">
-            </div>
-            <div class="control-row">
-                <label>Time Steps:</label>
-                <input type="number" id="ode-depth" value="20" min="5" max="50">
             </div>
         </div>
 
@@ -932,7 +919,6 @@
                 networkConfig.type = e.target.value;
                 document.getElementById('mlp-config').style.display = e.target.value === 'mlp' ? 'block' : 'none';
                 document.getElementById('resnet-config').style.display = e.target.value === 'resnet' ? 'block' : 'none';
-                document.getElementById('ode-config').style.display = e.target.value === 'neural-ode' ? 'block' : 'none';
                 sampleParameters();
                 renderNetwork();
             });
@@ -1013,9 +999,8 @@
                 renderNetwork();
             });
 
-            // ResNet/ODE config changes
-            ['resnet-input', 'resnet-state', 'resnet-output', 'resnet-blocks', 'resnet-hidden',
-             'ode-state', 'ode-depth'].forEach(id => {
+            // ResNet config changes
+            ['resnet-input', 'resnet-state', 'resnet-output', 'resnet-blocks', 'resnet-hidden'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener('change', () => {
@@ -1160,43 +1145,6 @@
                     currentState = nextState;
                     networkConfig.stateValues[b + 1] = [...currentState];
                 }
-
-            } else if (type === 'neural-ode') {
-                const state = parseInt(document.getElementById('ode-state').value);
-                const depth = parseInt(document.getElementById('ode-depth').value);
-
-                // Initialize state
-                let currentState = [];
-                for (let j = 0; j < state; j++) {
-                    currentState[j] = Math.random() * 0.5 + 0.25;
-                }
-
-                // Sample velocity field parameters (constant for simplicity)
-                const velocityWeights = [];
-                for (let j = 0; j < state; j++) {
-                    velocityWeights[j] = [];
-                    for (let k = 0; k < state; k++) {
-                        velocityWeights[j][k] = (Math.random() - 0.5) * 0.3;
-                    }
-                }
-
-                // Euler integration through time
-                for (let t = 0; t <= depth; t++) {
-                    networkConfig.stateValues[t] = [...currentState];
-                    
-                    if (t < depth) {
-                        const dt = 1 / depth;
-                        const nextState = [];
-                        for (let k = 0; k < state; k++) {
-                            let velocity = 0;
-                            for (let j = 0; j < state; j++) {
-                                velocity += velocityWeights[j][k] * Math.tanh(currentState[j] * 2);
-                            }
-                            nextState[k] = Math.max(0, Math.min(1, currentState[k] + velocity * dt * 3));
-                        }
-                        currentState = nextState;
-                    }
-                }
             }
 
             renderNetwork();
@@ -1225,15 +1173,6 @@
                 
                 if (output > 0) layers.push({ type: 'output', count: output });
                 
-                return layers;
-            } else if (type === 'neural-ode') {
-                const state = parseInt(document.getElementById('ode-state').value);
-                const depth = parseInt(document.getElementById('ode-depth').value);
-
-                const layers = [];
-                for (let i = 0; i <= depth; i++) {
-                    layers.push({ type: 'state', count: state, timeIndex: i, t: i / depth });
-                }
                 return layers;
             }
 
@@ -1460,131 +1399,8 @@
                     });
                 }
             }
-            // Neural ODE: draw as continuous band with many semi-transparent edges only
-            if (type === 'neural-ode') {
-                const odeGroup = g.append('g').attr('class', 'neural-ode-continuous');
-                const numStates = layers[0].count;
-                const numTimeSteps = layers.length;
-                
-                // Draw many intermediate edges (much more than the time steps)
-                const edgeResolution = 50; // Number of intermediate edges per segment
-                
-                for (let neuronIdx = 0; neuronIdx < numStates; neuronIdx++) {
-                    // Get all positions for this neuron over time
-                    const positions = basePositions.map((lp, t) => ({
-                        x: lp[neuronIdx].x,
-                        y: lp[neuronIdx].y,
-                        value: networkConfig.stateValues[t] ? networkConfig.stateValues[t][neuronIdx] : 0.5
-                    }));
-                    
-                    // Draw continuous band outline
-                    const bandPath = d3.path();
-                    bandPath.moveTo(positions[0].x, positions[0].y - neuronRadius);
-                    
-                    // Top edge
-                    for (let i = 1; i < positions.length; i++) {
-                        bandPath.lineTo(positions[i].x, positions[i].y - neuronRadius);
-                    }
-                    
-                    // Right cap
-                    bandPath.lineTo(positions[positions.length - 1].x, positions[positions.length - 1].y + neuronRadius);
-                    
-                    // Bottom edge (reverse)
-                    for (let i = positions.length - 2; i >= 0; i--) {
-                        bandPath.lineTo(positions[i].x, positions[i].y + neuronRadius);
-                    }
-                    bandPath.closePath();
-                    
-                    // Fill the band with semi-transparent state color
-                    const fillColor = d3.color(stateColor);
-                    fillColor.opacity = 0.08;
-                    
-                    odeGroup.append('path')
-                        .attr('d', bandPath.toString())
-                        .attr('fill', fillColor.toString())
-                        .attr('stroke', 'none');
-                    
-                    // Draw many intermediate vertical edges (hidden layer connections) - ALL in state color
-                    for (let seg = 0; seg < positions.length - 1; seg++) {
-                        const startPos = positions[seg];
-                        const endPos = positions[seg + 1];
-                        
-                        for (let e = 0; e <= edgeResolution; e++) {
-                            const t = e / edgeResolution;
-                            const x = startPos.x + (endPos.x - startPos.x) * t;
-                            const y = startPos.y + (endPos.y - startPos.y) * t;
-                            const value = startPos.value + (endPos.value - startPos.value) * t;
-                            
-                            // Edge opacity based on value - more visible now
-                            const edgeOpacity = 0.15 + value * 0.35;
-                            
-                            odeGroup.append('line')
-                                .attr('x1', x)
-                                .attr('y1', y - neuronRadius)
-                                .attr('x2', x)
-                                .attr('y2', y + neuronRadius)
-                                .attr('stroke', stateColor) // All in state color
-                                .attr('stroke-width', 0.8)
-                                .attr('opacity', edgeOpacity);
-                        }
-                    }
-                    
-                    // Draw horizontal flow lines (top and bottom edges) - state color
-                    odeGroup.append('path')
-                        .attr('d', d3.line()(positions.map(p => [p.x, p.y - neuronRadius])))
-                        .attr('fill', 'none')
-                        .attr('stroke', stateColor)
-                        .attr('stroke-width', 1.5)
-                        .attr('opacity', 0.7);
-                    
-                    odeGroup.append('path')
-                        .attr('d', d3.line()(positions.map(p => [p.x, p.y + neuronRadius])))
-                        .attr('fill', 'none')
-                        .attr('stroke', stateColor)
-                        .attr('stroke-width', 1.5)
-                        .attr('opacity', 0.7);
-                }
-                
-                // Add start and end markers - ALL in state color
-                const startPositions = basePositions[0];
-                const endPositions = basePositions[basePositions.length - 1];
-                
-                startPositions.forEach((pos, idx) => {
-                    const value = networkConfig.stateValues[0] ? networkConfig.stateValues[0][idx] : 0.5;
-                    const alpha = 0.3 + value * 0.6;
-                    const fill = d3.color(stateColor);
-                    fill.opacity = alpha;
-                    
-                    odeGroup.append('circle')
-                        .attr('cx', pos.x)
-                        .attr('cy', pos.y)
-                        .attr('r', neuronRadius * 0.6)
-                        .attr('fill', fill.toString())
-                        .attr('stroke', stateColor)
-                        .attr('stroke-width', 1.5);
-                });
-                
-                endPositions.forEach((pos, idx) => {
-                    const timeIdx = layers.length - 1;
-                    const value = networkConfig.stateValues[timeIdx] ? networkConfig.stateValues[timeIdx][idx] : 0.5;
-                    const alpha = 0.3 + value * 0.6;
-                    const fill = d3.color(stateColor); // Same state color
-                    fill.opacity = alpha;
-                    
-                    odeGroup.append('circle')
-                        .attr('cx', pos.x)
-                        .attr('cy', pos.y)
-                        .attr('r', neuronRadius * 0.6)
-                        .attr('fill', fill.toString())
-                        .attr('stroke', stateColor) // Same state color
-                        .attr('stroke-width', 1.5);
-                });
-            }
-
-            // Draw neurons (skip for Neural ODE - already drawn)
             // For ResNet: draw hidden neurons first, then skip connections, then state neurons
-            if (type !== 'neural-ode') {
-                const neuronsGroup = g.append('g').attr('class', 'neurons');
+            const neuronsGroup = g.append('g').attr('class', 'neurons');
                 
                 // First pass: Draw HIDDEN neurons only (for ResNet) or all non-state (for others)
                 basePositions.forEach((layerPositions, layerIndex) => {
@@ -1794,71 +1610,36 @@
             if (showText) {
                 const labelsGroup = g.append('g').attr('class', 'labels');
 
-                if (type === 'neural-ode') {
-                    // For Neural ODE, only show t=0 and t=1 labels
-                    const firstPos = basePositions[0][0];
-                    const lastPos = basePositions[basePositions.length - 1][0];
-                    const bottomFirst = basePositions[0][basePositions[0].length - 1];
-                    const bottomLast = basePositions[basePositions.length - 1][basePositions[basePositions.length - 1].length - 1];
-                    
+                basePositions.forEach((layerPositions, layerIndex) => {
+                    if (layerPositions.length === 0) return;
+
+                    const pos = layerPositions[0];
+                    const bottomPos = layerPositions[layerPositions.length - 1];
+                    const x = pos.x;
+                    const y = bottomPos.y + neuronRadius + 30;
+
+                    let label = '';
+                    if (type === 'mlp') {
+                        if (layerIndex === 0) label = 'Input';
+                        else if (layerIndex === numLayers - 1) label = 'Output';
+                        else label = `Hidden ${layerIndex}`;
+                    } else if (type === 'resnet') {
+                        const layerInfo = layers[layerIndex];
+                        if (layerInfo.type === 'input') label = 'Input';
+                        else if (layerInfo.type === 'output') label = 'Output';
+                        else if (layerInfo.type === 'state') label = `x_${layerInfo.blockIndex}`;
+                        else label = `h_${layerInfo.blockIndex + 1}`;
+                    }
+
                     labelsGroup.append('text')
                         .attr('class', 'layer-label')
-                        .attr('x', firstPos.x)
-                        .attr('y', bottomFirst.y + neuronRadius + 30)
+                        .attr('x', x)
+                        .attr('y', y)
                         .attr('font-size', 11)
                         .attr('fill', textColor)
                         .attr('text-anchor', 'middle')
-                        .text('t=0');
-                    
-                    labelsGroup.append('text')
-                        .attr('class', 'layer-label')
-                        .attr('x', lastPos.x)
-                        .attr('y', bottomLast.y + neuronRadius + 30)
-                        .attr('font-size', 11)
-                        .attr('fill', textColor)
-                        .attr('text-anchor', 'middle')
-                        .text('t=1');
-
-                    labelsGroup.append('text')
-                        .attr('class', 'layer-label')
-                        .attr('x', width / 2)
-                        .attr('y', 60)
-                        .attr('font-size', 14)
-                        .attr('fill', isDarkMode ? '#7eb8ff' : '#1f77b4')
-                        .attr('text-anchor', 'middle')
-                        .text('Neural ODE: dx/dt = f(x, t, θ)');
-                } else {
-                    basePositions.forEach((layerPositions, layerIndex) => {
-                        if (layerPositions.length === 0) return;
-
-                        const pos = layerPositions[0];
-                        const bottomPos = layerPositions[layerPositions.length - 1];
-                        const x = pos.x;
-                        const y = bottomPos.y + neuronRadius + 30;
-
-                        let label = '';
-                        if (type === 'mlp') {
-                            if (layerIndex === 0) label = 'Input';
-                            else if (layerIndex === numLayers - 1) label = 'Output';
-                            else label = `Hidden ${layerIndex}`;
-                        } else if (type === 'resnet') {
-                            const layerInfo = layers[layerIndex];
-                            if (layerInfo.type === 'input') label = 'Input';
-                            else if (layerInfo.type === 'output') label = 'Output';
-                            else if (layerInfo.type === 'state') label = `x_${layerInfo.blockIndex}`;
-                            else label = `h_${layerInfo.blockIndex + 1}`;
-                        }
-
-                        labelsGroup.append('text')
-                            .attr('class', 'layer-label')
-                            .attr('x', x)
-                            .attr('y', y)
-                            .attr('font-size', 11)
-                            .attr('fill', textColor)
-                            .attr('text-anchor', 'middle')
-                            .text(label);
-                    });
-                }
+                        .text(label);
+                });
             }
         }
 
